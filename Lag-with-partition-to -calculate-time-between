@@ -1,0 +1,30 @@
+select 
+ ID
+,result_ID
+,CREATED
+,EXAM_SUBJECT
+,pDataDate
+,DATEDIFF(hour, pDataDate, CREATED) / 24.0 days
+
+From (
+	select
+	c.ID
+	,r.ID result_ID
+	,r.CREATED
+	,s.EXAM_SUBJECT
+	,LAG(r.CREATED) OVER (PARTITION BY c.id ORDER BY r.CREATED) pDataDate
+
+	 FROM candidate c 
+	 join APPOINTMENT a on a.CANDIDATE_ID = c.id
+	 JOIN EXAM e ON e.APPOINTMENT_ID = a.id
+	 JOIN EXAM_SERIES s ON s.id = e.SERIES_ID and s.GED_READY = 0
+	 JOIN EXAM_RESULT r ON r.EXAM_ID = e.ID and R.SCORE > 0
+
+	 where c.DELETED = 0 and c.TEST_DATA = 0 and a.STATUS != 'Cancelled'
+	 and c.ACCOUNT_SETUP_COMPLETE_DATE between '2019-01-01' and '2019-07-10'
+	 and s.EXAM_SUBJECT is not null
+) q
+
+where q.pDataDate is not null
+
+order by q.id
