@@ -1,0 +1,176 @@
+-- which table is this on?
+
+SELECT table_name
+	,column_name
+FROM information_schema.columns
+WHERE column_name LIKE '%ecommerce%'
+
+
+-- List of tests for a specific student including test center information:
+SELECT DISTINCT c.id
+	,c.EMAIL
+	,es.NAME
+	,er.score
+	,a.start_date_time AS TestDate
+	,t.VUE_ID AS testCenterID
+	,t.NAME AS testCenterName
+	,j.POSTAL_CODE AS testCenterJuris
+FROM CANDIDATE c
+	INNER JOIN APPOINTMENT a ON (a.CANDIDATE_ID = c.ID)
+	INNER JOIN EXAM e ON (e.APPOINTMENT_ID = a.ID)
+	INNER JOIN EXAM_SERIES es ON (
+			e.SERIES_ID = es.ID
+			AND es.GED_READY = 0
+			)
+	INNER JOIN EXAM_RESULT er ON (
+			er.EXAM_ID = e.ID
+			AND er.score > 0
+			)
+	JOIN TEST_CENTER t ON a.TEST_CENTER_ID = t.id
+	JOIN jurisdiction j ON t.JURISDICTION_ID = j.id
+WHERE EXTERNAL_CANDIDATE_ID = '20160126-8741-2140'
+
+
+-- GED ready activity
+
+SELECT c.FIRST_NAME
+	,c.LAST_NAME
+	,c.ETHNICITY
+	,c.DATE_OF_BIRTH
+	,c.GENDER
+	,p.NAME
+	,tc.NAME
+	,tc.CITY
+	,a.EVENT_DATE_TIME
+	,es.NAME
+	,er.SCORE
+	,CASE 
+		WHEN es.ged_ready = 1
+			AND er.score < 134
+			THEN 'Red'
+		WHEN es.ged_ready = 1
+			AND er.score >= 134
+			AND er.score < 145
+			THEN 'Yellow'
+		WHEN es.ged_ready = 1
+			AND er.score >= 145
+			THEN 'Green'
+		END AS score_category
+	,cjc.CREDENTIAL_DATE
+FROM candidate c
+	JOIN APPOINTMENT a ON c.ID = a.CANDIDATE_ID
+	JOIN exam e ON a.ID = e.APPOINTMENT_ID
+	JOIN exam_series es ON e.SERIES_ID = es.ID
+	JOIN exam_result er ON e.ID = er.EXAM_ID
+	JOIN test_center tc ON a.TEST_CENTER_ID = tc.ID
+	LEFT JOIN program p ON c.PROGRAM_ID = p.ID
+	LEFT JOIN CANDIDATE_JURISDICTION_CREDENTIAL cjc ON c.ID = cjc.CANDIDATE_ID
+WHERE c.TESTING_JURISDICTION_ID = (
+		SELECT id
+		FROM JURISDICTION
+		WHERE name = 'Arkansas'
+		)
+	AND a.EVENT_DATE_TIME >= '01-01-2014'
+ORDER BY c.last_name ASC
+	,c.first_name ASC
+	,event_date_time ASC
+
+
+--Ecommerce Products
+
+SELECT DISTINCT c.id
+	,p.PURCHASE_TYPE
+	,i.ECOMMERCE_PRODUCT_ID
+	,i.ECOMMERCE_PRODUCT_NAME
+	,i.ECOMMERCE_PRODUCT_CODE
+	,i.FROM_PURCHASE_BUNDLE
+	,e.RENEWAL
+	,e.SUBJECT
+	,e.TYPE
+	,c.STATE
+	,p.ECOMMERCE_ORDER_ID
+	,p.ORDER_DATE
+	,convert(DATE, i.REFUND_DATE) REFUND_DATE
+FROM candidate c
+	JOIN candidate_purchase p ON p.candidate_id = c.id
+	JOIN USER_LOGIN u ON u.ID = c.USER_ID
+	JOIN candidate_purchase_item i ON i.candidate_purchase_id = p.id
+	JOIN ecommerce_product e ON e.id = i.product_id
+
+WHERE c.TEST_DATA = 0
+	AND c.deleted = 0
+)
+
+
+-- Last Passed & Last Failed Test (shows CANDIDATE_CREDENTIAL_EXAM_RESULT relationships)
+
+select c.ID
+	, c.EXTERNAL_CANDIDATE_ID
+	, lf2.START_TIME 		last_failed_date
+	, lf2.SCORE				last_failed_score
+	, lf2.EXAM_SUBJECT		last_failed_subject
+ 	, lp2.START_TIME 		last_passed_date
+	, lp2.SCORE 			last_passed_score
+	, lp2.EXAM_SUBJECT 		last_passed_subject
+
+from CANDIDATE c
+	join JURISDICTION j on j.ID = c.TESTING_JURISDICTION_ID and j.POSTAL_CODE = 'KY'
+
+
+
+--subquery to get last failed test
+
+  	join(select c.id	
+			, er.START_TIME
+			, er.SCORE
+			, es.EXAM_SUBJECT
+		from CANDIDATE c
+		join CANDIDATE_CREDENTIAL_EXAM_RESULT CCER on C.ID = CCER.CANDIDATE_ID
+  		join EXAM_RESULT er on er.id = ccer.EXAM_RESULT_ID and er.score < 145
+		join exam e on er.EXAM_ID = e.id
+		join EXAM_SERIES es on es.id = e.SERIES_ID and es.GED_READY = 0
+		join (select
+  				c.id		
+  				,max(er.start_time) last_failed_date
+          
+  
+			from CANDIDATE c
+  				join CANDIDATE_CREDENTIAL_EXAM_RESULT CCER on C.ID = CCER.CANDIDATE_ID
+  				join EXAM_RESULT er on er.id = ccer.EXAM_RESULT_ID and er.score < 145
+  				join exam e on er.EXAM_ID = e.id
+  				join EXAM_SERIES es on es.id = e.SERIES_ID and es.GED_READY = 0	
+  
+			  group by c.id
+			) lf on lf.ID = c.ID and lf.last_failed_date = er.START_TIME
+		 ) lf2 on lf2.ID = c.ID
+
+
+--subquery to get last passed test
+
+  	join(select c.id	
+			, er.START_TIME
+			, er.SCORE
+			, es.EXAM_SUBJECT
+		from CANDIDATE c
+		join CANDIDATE_CREDENTIAL_EXAM_RESULT CCER on C.ID = CCER.CANDIDATE_ID
+  		join EXAM_RESULT er on er.id = ccer.EXAM_RESULT_ID
+		join exam e on er.EXAM_ID = e.id
+		join EXAM_SERIES es on es.id = e.SERIES_ID and es.GED_READY = 0
+		join (select
+  				c.id
+  				,max(er.start_time) last_passed_date
+          
+  
+			  from CANDIDATE c
+  					join CANDIDATE_CREDENTIAL_EXAM_RESULT CCER on C.ID = CCER.CANDIDATE_ID
+  					join EXAM_RESULT er on er.id = ccer.EXAM_RESULT_ID and ccer.first_passed = 1
+  					join exam e on er.EXAM_ID = e.id
+  					join EXAM_SERIES es on es.id = e.SERIES_ID and es.GED_READY = 0
+  
+			  group by c.id
+			) lp on lp.ID = c.ID and lp.last_passed_date = er.START_TIME
+		 ) lp2 on lp2.ID = c.ID
+
+where c.created > '2022-01-01'
+	and c.DELETED = 0 
+	and c.TEST_DATA = 0
