@@ -174,3 +174,25 @@ from CANDIDATE c
 where c.created > '2022-01-01'
 	and c.DELETED = 0 
 	and c.TEST_DATA = 0
+	
+
+--Automated Emails relationship to candidates
+
+SELECT eh.ID
+      ,eh.CANDIDATE_ID
+      ,eh.TEMPLATE_ID
+      ,eh.EMAIL_TRANSACTION_ID
+      ,eh.STATUS
+      ,eh.CREATED
+      ,eh.UPDATED
+      ,eh.SOURCE_FLASH_SUBJECT
+      ,eh.FLASH_EXPIRE_DATE
+      ,et.TEMPLATE_NAME
+      ,et.EMAIL_GROUP
+      
+  FROM CANDIDATE_EMAIL_HISTORY eh
+  join EMAIL_TEMPLATE et on eh.TEMPLATE_ID = et.ID
+
+  where CANDIDATE_ID = 7110394
+
+  order by eh.CANDIDATE_ID, eh.CREATED
