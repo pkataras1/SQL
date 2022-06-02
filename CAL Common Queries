@@ -196,3 +196,12 @@ SELECT eh.ID
   where CANDIDATE_ID = 7110394
 
   order by eh.CANDIDATE_ID, eh.CREATED
+
+
+--Criteria for filtering out GEDWorks candidates (Employer Sponsored)
+
+select TOP 100 *
+
+from CANDIDATE c
+
+where c.ID not in (SELECT css.CANDIDATE_ID from CANDIDATE_SUBJECT_STATUS css where css.APPROVAL_STATUS = 'APPROVED' and css.TYPE = 'WORKS')
