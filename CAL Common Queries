@@ -205,3 +205,5 @@ select TOP 100 *
 from CANDIDATE c
 
 where c.ID not in (SELECT css.CANDIDATE_ID from CANDIDATE_SUBJECT_STATUS css where css.APPROVAL_STATUS = 'APPROVED' and css.TYPE = 'WORKS')
+
+--test comment
