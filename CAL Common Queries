@@ -206,4 +206,57 @@ from CANDIDATE c
 
 where c.ID not in (SELECT css.CANDIDATE_ID from CANDIDATE_SUBJECT_STATUS css where css.APPROVAL_STATUS = 'APPROVED' and css.TYPE = 'WORKS')
 
---test comment
+
+--subquery to for product purchases and applied promo codes
+
+DECLARE @Order_After date = '2021-07-01 00:00:00.000';
+DECLARE @Order_Before date = '2021-08-31 00:00:00.000';
+
+SELECT DISTINCT c.id
+	,p.PURCHASE_TYPE
+	,i.ECOMMERCE_PRODUCT_ID
+	,i.ECOMMERCE_PRODUCT_NAME
+	,i.ECOMMERCE_PRODUCT_CODE
+	,i.FROM_PURCHASE_BUNDLE
+	,e.RENEWAL
+	,e.SUBJECT
+	,e.TYPE
+	,c.STATE
+	,p.ECOMMERCE_ORDER_ID
+	,p.ORDER_DATE
+	,convert(DATE, i.REFUND_DATE) REFUND_DATE
+	,pc.PROMO_CODE
+FROM candidate c
+	JOIN candidate_purchase p ON p.candidate_id = c.id
+	JOIN USER_LOGIN u ON u.ID = c.USER_ID
+	JOIN candidate_purchase_item i ON i.candidate_purchase_id = p.id and i.PROMO_CODE is null    --only products
+	left JOIN candidate_purchase_item pc ON pc.candidate_purchase_id = p.id and pc.PROMO_CODE is not null	--only promo codes
+	left JOIN ecommerce_product e ON e.id = i.product_id
+
+WHERE c.TEST_DATA = 0
+
+	and p.ORDER_DATE between @Order_After and @Order_Before
+
+Order by p.ORDER_DATE
+
+
+
+Pete K pulled 2 months of Promo_Codes to get and example of qty and type of codes.  See description below
+
+Qty	Promo_Code 	Description
+4	2J38FDJCD67 -> Disregard
+10	GED Ready - Math  -> Disregard
+3	GED Ready - Reasoning through Language Arts  -> Disregard
+1101	25OFF -> 25% off
+1	GEDFLASH6PQYD7D9L  -> Disregard
+1	GEDFLASHXFYGLB96L  -> Disregard
+1	GEDFLASH$FKJ$590L  -> Disregard
+724	GEDLIVE25 -> 25% off Live
+35	Txtflash15 -> 15% off FLash
+4781	50OFF -> 50% off
+2	INTCODE-F73H-D83H  -> Disregard
+1	GEDFLASHSPDYH255L  -> Disregard
+1	GEDFLASHT4BRQBD2L  -> Disregard
+25	GEDLIVE10  -> 10% off Live
+377	flash15 -> 15% off FLash
+431	Works100 -> Disregard (Related to GEDWorks program)
