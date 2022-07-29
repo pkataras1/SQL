@@ -260,3 +260,63 @@ Qty	Promo_Code 	Description
 25	GEDLIVE10  -> 10% off Live
 377	flash15 -> 15% off FLash
 431	Works100 -> Disregard (Related to GEDWorks program)
+
+
+--number of emails between first exam and make_pass exam
+
+select ft.ID
+, ft.EXTERNAL_CANDIDATE_ID
+, ft.min_date
+, lt.max_date
+, COUNT(em.created)
+
+
+from CANDIDATE c
+join (select c.ID
+		, c.EXTERNAL_CANDIDATE_ID
+		, min(er.CREATED) min_date
+
+		from CANDIDATE c
+		join JURISDICTION j on j.ID = c.TESTING_JURISDICTION_ID and (j.INTERNATIONAL = 0 and j.COUNTRY != 'CAN')
+		join CANDIDATE_CREDENTIAL_EXAM_RESULT ccer on ccer.CANDIDATE_ID = c.ID and FIRST_COMPLETE = 1
+		join EXAM_RESULT er on er.ID = ccer.EXAM_RESULT_ID
+		
+		group by c.id, c.EXTERNAL_CANDIDATE_ID)	ft on ft.ID = c.ID
+
+join (select c.ID
+		, c.EXTERNAL_CANDIDATE_ID
+		, max(er.CREATED) max_date
+
+		from CANDIDATE c
+		join JURISDICTION j on j.ID = c.TESTING_JURISDICTION_ID and (j.INTERNATIONAL = 0 and j.COUNTRY != 'CAN')
+		join CANDIDATE_CREDENTIAL_EXAM_RESULT ccer on ccer.CANDIDATE_ID = c.ID and MAKE_PASSED = 1
+		join EXAM_RESULT er on er.ID = ccer.EXAM_RESULT_ID
+		
+		group by c.id, c.EXTERNAL_CANDIDATE_ID)	lt on lt.ID = c.ID
+
+
+join (
+	select eh.CANDIDATE_ID
+		,eh.CREATED
+
+	from CANDIDATE_EMAIL_HISTORY eh
+	join EMAIL_TEMPLATE et on eh.TEMPLATE_ID = et.ID
+
+	where et.EMAIL_GROUP = 'EBE1'
+
+) em on em.CANDIDATE_ID = ft.ID and em.CREATED > ft.min_date and em.CREATED < lt.max_date
+
+
+where c.DELETED = 0 and c.TEST_DATA = 0 and c.inmate = 0
+and  c.ID not in (SELECT css.CANDIDATE_ID from CANDIDATE_SUBJECT_STATUS css where css.APPROVAL_STATUS = 'APPROVED' and css.TYPE = 'WORKS')
+and convert(char(4), c.ACCOUNT_SETUP_COMPLETE_DATE) = '2021'
+
+group by 
+  ft.ID
+, ft.EXTERNAL_CANDIDATE_ID
+, ft.min_date
+, lt.max_date
+
+
+
+
